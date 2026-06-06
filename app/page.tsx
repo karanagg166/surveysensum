@@ -1,65 +1,190 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Sparkles, Sliders, Play, FileJson } from "lucide-react";
+import { toast } from "sonner";
+
+import SurveyJsonEditor from "@/components/SurveyJsonEditor";
+import LoadingOverlay from "@/components/LoadingOverlay";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { SurveyDefinition, generateResponses } from "@/lib/api";
+
+export default function SurveyEditorPage() {
+  const router = useRouter();
+  
+  const [survey, setSurvey] = useState<SurveyDefinition | null>(null);
+  const [isValidJson, setIsValidJson] = useState(false);
+  const [sampleSize, setSampleSize] = useState(200);
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+
+  const handleValidationChange = (isValid: boolean, parsedSurvey: SurveyDefinition | null) => {
+    setIsValidJson(isValid);
+    if (parsedSurvey) {
+      setSurvey(parsedSurvey);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!isValidJson || !survey) {
+      toast.error("Please resolve any JSON validation issues first.");
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingStep(0);
+
+    // Simulate progress steps while generating
+    const stepInterval = setInterval(() => {
+      setLoadingStep((prev) => (prev < 3 ? prev + 1 : prev));
+    }, 1500);
+
+    try {
+      // Execute generate request to FastAPI
+      const result = await generateResponses(survey, sampleSize);
+      
+      // Clear interval and set to final step
+      clearInterval(stepInterval);
+      setLoadingStep(3);
+      
+      // Short delay to let the user see the completed checklist
+      setTimeout(() => {
+        // Store in localStorage
+        localStorage.setItem("survey_definition", JSON.stringify(survey));
+        localStorage.setItem("survey_responses", JSON.stringify(result.responses));
+        localStorage.setItem("survey_stats", JSON.stringify(result.stats));
+        
+        toast.success(`Generated ${sampleSize} responses successfully!`);
+        setIsLoading(false);
+        router.push("/results");
+      }, 800);
+
+    } catch (e: any) {
+      clearInterval(stepInterval);
+      setIsLoading(false);
+      toast.error(e.message || "Failed to generate responses. Please try again.");
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex-1 bg-zinc-50 flex flex-col justify-between" id="survey-editor-page">
+      <main className="flex-grow container mx-auto px-4 py-8 max-w-6xl">
+        {/* Hero Header */}
+        <div className="mb-8 text-center sm:text-left">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col sm:flex-row items-center gap-3 justify-center sm:justify-start"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-100">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-950">
+                SurveySensum AI
+              </h1>
+              <p className="text-sm text-zinc-500">
+                Synthetic Survey Response Generator
+              </p>
+            </div>
+          </motion.div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Workspace Layout */}
+        <div className="grid gap-6 md:grid-cols-12 items-start">
+          {/* Left panel: JSON Editor */}
+          <div className="md:col-span-7 h-full">
+            <SurveyJsonEditor onValidationChange={handleValidationChange} />
+          </div>
+
+          {/* Right panel: Controls & Trigger */}
+          <div className="md:col-span-5 space-y-6">
+            <Card className="border-zinc-200/80 bg-white shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold text-zinc-900">
+                  Generation Configuration
+                </CardTitle>
+                <CardDescription>
+                  Configure the synthesis parameters
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Sample Size Control */}
+                <div className="space-y-2">
+                  <label htmlFor="generator-count" className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                    Response Count (N)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="generator-count"
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={sampleSize}
+                      onChange={(e) => setSampleSize(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
+                      className="bg-zinc-50 border-zinc-200"
+                    />
+                    <span className="text-xs text-zinc-400 shrink-0">Limit: 1 - 500</span>
+                  </div>
+                </div>
+
+                {/* Info Box */}
+                <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-700">
+                    <Sliders className="h-4 w-4 text-indigo-600" />
+                    SIMULATION DETAILS
+                  </div>
+                  <ul className="text-xs text-zinc-500 space-y-2 list-disc list-inside">
+                    <li>4 responder archetypes: Promoter, Passive, Detractor, Mixed</li>
+                    <li>Strong satisfaction-NPS correlation (Pearson r &gt; 0.70)</li>
+                    <li>Automatic category weight assignment</li>
+                    <li>High-fidelity open feedback comments via Cohere command-r</li>
+                  </ul>
+                </div>
+
+                {/* Generate CTA Button */}
+                <Button
+                  id="generate-responses-btn"
+                  onClick={handleGenerate}
+                  disabled={!isValidJson || isLoading}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-medium shadow-lg shadow-indigo-100 hover:shadow-xl transition-all duration-300 py-6 text-sm flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  Generate Synthetic Data
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Test Case Indicator Card */}
+            <Card className="border-zinc-200/80 bg-zinc-50/50 border-dashed">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileJson className="h-3.5 w-3.5" />
+                  Handoff Test Case
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-zinc-600 space-y-1">
+                <p><span className="font-semibold text-zinc-800">Target:</span> E-commerce Customer Satisfaction Survey</p>
+                <p><span className="font-semibold text-zinc-800">Sample size:</span> 200 synthetic responses</p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
+
+      {/* Loading Overlay */}
+      <LoadingOverlay isVisible={isLoading} currentStep={loadingStep} />
+
+      {/* Footer */}
+      <footer className="py-6 border-t border-zinc-200 bg-white mt-12 text-center text-xs text-zinc-400">
+        &copy; {new Date().getFullYear()} SurveySensum AI. Built on Next.js 16 & FastAPI.
+      </footer>
     </div>
   );
 }
