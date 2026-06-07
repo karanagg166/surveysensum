@@ -31,6 +31,10 @@ export interface SurveyStats {
   delivery_on_time_percentage: number;
   category_counts: Record<string, number>;
   nps_counts: NpsCounts;
+  pearson_r: number | null;
+  total_responses: number;
+  token_usage: number;
+  sentiment_alignment: number;
 }
 
 export interface GenerateResult {

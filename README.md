@@ -45,6 +45,12 @@ With more time, we would implement the following enhancements:
 * **Interactive Persona Weighting**: Add sliders in the UI so users can dynamically customize the percentage of Promoters/Detractors, delivery delay rates, or product categories to simulate different market scenarios.
 * **Interactive Evaluation Dashboard**: Build a visual dashboard directly in the UI that displays the Pearson correlation, token usage, and sentiment alignment score for every generated batch.
 
+### 4. Known Limitations
+
+* **Survey Structure Assumptions**: The statistical engine assumes the first `rating` type question uses a 1–5 scale and appears before the NPS question. If a survey has a 1–10 rating before NPS, values 6–10 will be skipped during the correlation lookup in `statistical.py` (line 35: `if isinstance(val, int) and val <= 5`), causing a fallback to the persona mean. This works correctly for the provided e-commerce test case but would need to be generalized for arbitrary survey structures.
+
+* **localStorage Transfer**: Generated responses are transferred to the results page via `localStorage`. In incognito/private browsing or contexts where storage is blocked, the user sees a redirect back to the editor with a toast notification. A query-parameter or sessionStorage fallback would be more robust.
+
 ---
 
 ## 🚀 Tech Stack

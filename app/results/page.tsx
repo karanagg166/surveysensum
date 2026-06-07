@@ -25,9 +25,20 @@ export default function ResultsDashboardPage() {
   useEffect(() => {
     // Load data from localStorage
     try {
-      const storedSurvey = localStorage.getItem("survey_definition");
-      const storedResponses = localStorage.getItem("survey_responses");
-      const storedStats = localStorage.getItem("survey_stats");
+      let storedSurvey, storedResponses, storedStats;
+      try {
+        storedSurvey = localStorage.getItem("survey_definition");
+        storedResponses = localStorage.getItem("survey_responses");
+        storedStats = localStorage.getItem("survey_stats");
+      } catch (storageError) {
+        toast({
+          title: "Storage Unavailable",
+          description: "Browser storage is blocked (incognito mode?). Please use a regular browser window.",
+          variant: "destructive",
+        });
+        router.push("/");
+        return;
+      }
 
       if (!storedSurvey || !storedResponses || !storedStats) {
         toast({
@@ -53,7 +64,7 @@ export default function ResultsDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, toast]);
 
   // Client-side CSV Download
   const handleDownloadCSV = () => {

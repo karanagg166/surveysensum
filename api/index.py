@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from typing import Dict, Any
+import numpy as np
 
 from api.models.survey import GenerateRequest, SurveyResponse, QuestionType
 from api.generator.pipeline import generate_responses
@@ -154,7 +155,63 @@ def calculate_survey_stats(responses, survey) -> Dict[str, Any]:
     for cat in ["Electronics", "Clothing", "Home", "Other"]:
         if cat not in category_counts:
             category_counts[cat] = 0
-            
+
+    # Compute Pearson correlation between satisfaction and NPS values
+    sat_vals = []
+    nps_vals = []
+    for r in responses:
+        answers = r.answers
+        sat_val = answers.get(sat_q_id) if sat_q_id else None
+        nps_val = answers.get(nps_q_id) if nps_q_id else None
+        if sat_val is not None and nps_val is not None:
+            sat_vals.append(sat_val)
+            nps_vals.append(nps_val)
+
+    if len(sat_vals) > 1 and len(nps_vals) > 1:
+        pearson_r = round(float(np.corrcoef(sat_vals, nps_vals)[0, 1]), 3)
+    else:
+        pearson_r = None
+
+    # Estimate token usage
+    import os
+    cohere_key = os.getenv("COHERE_API_KEY")
+    if cohere_key and cohere_key != "your_key_here" and cohere_key.strip():
+        # Estimate: ~220 prompt tokens per response + ~35 output tokens per response
+        token_usage = total * 255
+    else:
+        token_usage = 0
+
+    # Calculate sentiment alignment
+    aligned_count = 0
+    checked_count = 0
+    ot_q_id = None
+    for q in survey.questions:
+        if q.type == QuestionType.open_text:
+            ot_q_id = q.id
+            break
+
+    if ot_q_id and sat_q_id:
+        pos_words = {"love", "great", "best", "perfect", "good", "happy", "excellent", "fast", "prompt", "amazing", "satisfied", "fine", "decent", "smooth", "impressed"}
+        neg_words = {"poor", "bad", "cheap", "broke", "disappointed", "late", "delayed", "slow", "wrong", "terrible", "worst", "unhelpful", "ignore", "missing", "delay", "damaged", "fail"}
+        for r in responses:
+            sat_val = r.answers.get(sat_q_id)
+            comment = str(r.answers.get(ot_q_id) or "").lower()
+            if sat_val is not None and comment:
+                checked_count += 1
+                words = comment.split()
+                pos_count = sum(1 for w in words if any(p in w for p in pos_words))
+                neg_count = sum(1 for w in words if any(n in w for n in neg_words))
+                if sat_val >= 4:
+                    if pos_count >= neg_count:
+                        aligned_count += 1
+                elif sat_val <= 2:
+                    if neg_count >= pos_count:
+                        aligned_count += 1
+                else:
+                    aligned_count += 1
+
+    sentiment_alignment = round((aligned_count / checked_count) * 100, 1) if checked_count > 0 else 100.0
+
     return {
         "avg_satisfaction": avg_sat,
         "avg_nps": avg_nps,
@@ -165,5 +222,9 @@ def calculate_survey_stats(responses, survey) -> Dict[str, Any]:
             "promoters": promoters,
             "passives": passives,
             "detractors": detractors
-        }
+        },
+        "pearson_r": pearson_r,
+        "total_responses": total,
+        "token_usage": token_usage,
+        "sentiment_alignment": sentiment_alignment
     }
