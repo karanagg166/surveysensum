@@ -59,7 +59,7 @@ export default function CategoryChart({ stats }: CategoryChartProps) {
           <CardDescription>Response distribution across product departments</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px] pb-4">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart
               data={categoryData}
               margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -111,7 +111,7 @@ export default function CategoryChart({ stats }: CategoryChartProps) {
         </CardHeader>
         <CardContent className="h-[300px] flex flex-col items-center justify-center">
           <div className="relative h-[220px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <PieChart>
                 <Pie
                   data={npsData}
