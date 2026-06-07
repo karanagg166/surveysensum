@@ -67,15 +67,12 @@ type EditorTab = "visual" | "json";
 
 export default function SurveyJsonEditor({ onValidationChange }: SurveyJsonEditorProps) {
   const [activeTab, setActiveTab] = useState<EditorTab>("visual");
-  const [jsonText, setJsonText] = useState("");
-  const [surveyState, setSurveyState] = useState<SurveyDefinition | null>(null);
+  const [jsonText, setJsonText] = useState(() => JSON.stringify(DEFAULT_SURVEY, null, 2));
+  const [surveyState, setSurveyState] = useState<SurveyDefinition | null>(DEFAULT_SURVEY);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Initialize
+  // Notify parent on mount
   useEffect(() => {
-    const initialText = JSON.stringify(DEFAULT_SURVEY, null, 2);
-    setJsonText(initialText);
-    setSurveyState(DEFAULT_SURVEY);
     onValidationChange(true, DEFAULT_SURVEY);
   }, []);
 
