@@ -3,7 +3,8 @@ from typing import List, Dict, Any
 from api.models.survey import SurveyDefinition, SurveyResponse, QuestionType
 from api.generator.personas import assign_personas
 from api.generator.statistical import generate_structured
-from api.generator.cohere_gen import batch_generate_open_text
+from api.generator.cohere_gen import batch_generate_open_text, get_fallback_comment
+import concurrent.futures
 
 def generate_responses(survey: SurveyDefinition, n: int) -> List[SurveyResponse]:
     """
@@ -33,31 +34,27 @@ def generate_responses(survey: SurveyDefinition, n: int) -> List[SurveyResponse]
             "answers": answers
         })
         
-    # 3. Find open-text questions and generate their answers in batches of 10
+    # 3. Find open-text questions and generate their answers in parallel batches of 50
     open_text_questions = [q for q in survey.questions if q.type == QuestionType.open_text]
     
     for ot_question in open_text_questions:
-        # We need to batch-generate comments for all N respondents
-        batch_size = 10
-        all_comments = []
+        batch_size = 50  # Increased from 10 to 50 to minimize number of API requests
+        all_comments = [None] * n
         
+        # Prepare all batches
+        batches = []
         for i in range(0, n, batch_size):
             chunk = responses_data[i:i+batch_size]
-            
-            # Prepare profiles for this chunk
             profiles = []
             for item in chunk:
                 persona = item["persona"]
                 answers = item["answers"]
                 
-                # Try to find rating, nps, and delivery status in answers
-                # If they are not found, we use defaults
                 rating = 3
                 nps = 7
                 category = persona.get("category", "Other")
                 delivery_on_time = persona.get("delivery_on_time", True)
                 
-                # Extract rating and nps from answers
                 for q in survey.questions:
                     if q.type == QuestionType.rating and q.id in answers:
                         rating = answers[q.id]
@@ -72,14 +69,57 @@ def generate_responses(survey: SurveyDefinition, n: int) -> List[SurveyResponse]
                     "category": category,
                     "delivery_on_time": delivery_on_time
                 })
-                
-            # Generate comments for this batch of 10
-            comments = batch_generate_open_text(profiles, survey.title)
-            all_comments.extend(comments)
+            batches.append((i, profiles))
             
-            # Small rate-limit delay
-            if i + batch_size < n:
-                time.sleep(0.1)
+        def worker(batch_info):
+            start_idx, profiles = batch_info
+            try:
+                comments = batch_generate_open_text(profiles, survey.title)
+                return start_idx, comments
+            except Exception as e:
+                print(f"Error in worker thread: {e}")
+                return start_idx, [get_fallback_comment(p) for p in profiles]
+                
+        # Run batches concurrently with a maximum total timeout of 8.0 seconds to prevent Gateway Timeout (504)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(worker, b): b for b in batches}
+            try:
+                for future in concurrent.futures.as_completed(futures, timeout=8.0):
+                    start_idx, comments = future.result()
+                    for idx, comment in enumerate(comments):
+                        if start_idx + idx < n:
+                            all_comments[start_idx + idx] = comment
+            except concurrent.futures.TimeoutError:
+                print("Generation timed out. Using fallbacks for remaining items.")
+                for future in futures:
+                    future.cancel()
+                    
+        # Fill in fallbacks for any items that failed or timed out
+        for idx in range(n):
+            if all_comments[idx] is None:
+                persona = responses_data[idx]["persona"]
+                answers = responses_data[idx]["answers"]
+                
+                rating = 3
+                nps = 7
+                category = persona.get("category", "Other")
+                delivery_on_time = persona.get("delivery_on_time", True)
+                
+                for q in survey.questions:
+                    if q.type == QuestionType.rating and q.id in answers:
+                        rating = answers[q.id]
+                    elif q.type == QuestionType.nps and q.id in answers:
+                        nps = answers[q.id]
+                        
+                profile = {
+                    "respondent_id": persona["respondent_id"],
+                    "archetype": persona["archetype"],
+                    "rating": rating,
+                    "nps": nps,
+                    "category": category,
+                    "delivery_on_time": delivery_on_time
+                }
+                all_comments[idx] = get_fallback_comment(profile)
                 
         # Assign comments back to responses_data
         for idx, comment in enumerate(all_comments):
