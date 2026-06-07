@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Sparkles, Sliders, Play, FileJson } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 import SurveyJsonEditor from "@/components/SurveyJsonEditor";
 import LoadingOverlay from "@/components/LoadingOverlay";
@@ -15,6 +15,7 @@ import { SurveyDefinition, generateResponses } from "@/lib/api";
 
 export default function SurveyEditorPage() {
   const router = useRouter();
+  const { toast } = useToast();
   
   const [survey, setSurvey] = useState<SurveyDefinition | null>(null);
   const [isValidJson, setIsValidJson] = useState(false);
@@ -32,7 +33,11 @@ export default function SurveyEditorPage() {
 
   const handleGenerate = async () => {
     if (!isValidJson || !survey) {
-      toast.error("Please resolve any JSON validation issues first.");
+      toast({
+        title: "Validation Error",
+        description: "Please resolve any JSON validation issues first.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -59,7 +64,10 @@ export default function SurveyEditorPage() {
         localStorage.setItem("survey_responses", JSON.stringify(result.responses));
         localStorage.setItem("survey_stats", JSON.stringify(result.stats));
         
-        toast.success(`Generated ${sampleSize} responses successfully!`);
+        toast({
+          title: "Success",
+          description: `Generated ${sampleSize} responses successfully!`,
+        });
         setIsLoading(false);
         router.push("/results");
       }, 800);
@@ -67,7 +75,11 @@ export default function SurveyEditorPage() {
     } catch (e: any) {
       clearInterval(stepInterval);
       setIsLoading(false);
-      toast.error(e.message || "Failed to generate responses. Please try again.");
+      toast({
+        title: "Error",
+        description: e.message || "Failed to generate responses. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -97,14 +109,39 @@ export default function SurveyEditorPage() {
         </div>
 
         {/* Workspace Layout */}
-        <div className="grid gap-6 md:grid-cols-12 items-start">
+        <motion.div
+          variants={{
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.15,
+              },
+            },
+          }}
+          initial="hidden"
+          animate="show"
+          className="grid gap-6 md:grid-cols-12 items-start"
+        >
           {/* Left panel: JSON Editor */}
-          <div className="md:col-span-7 h-full">
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 15 } },
+            }}
+            className="md:col-span-7 h-full"
+          >
             <SurveyJsonEditor onValidationChange={handleValidationChange} />
-          </div>
+          </motion.div>
 
           {/* Right panel: Controls & Trigger */}
-          <div className="md:col-span-5 space-y-6">
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 15 } },
+            }}
+            className="md:col-span-5 space-y-6"
+          >
             <Card className="border-zinc-200/80 bg-white shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base font-semibold text-zinc-900">
@@ -149,15 +186,21 @@ export default function SurveyEditorPage() {
                 </div>
 
                 {/* Generate CTA Button */}
-                <Button
-                  id="generate-responses-btn"
-                  onClick={handleGenerate}
-                  disabled={!isValidJson || isLoading}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-medium shadow-lg shadow-indigo-100 hover:shadow-xl transition-all duration-300 py-6 text-sm flex items-center justify-center gap-2 cursor-pointer"
+                <motion.div
+                  whileHover={isValidJson && !isLoading ? { scale: 1.02 } : {}}
+                  whileTap={isValidJson && !isLoading ? { scale: 0.98 } : {}}
+                  className="w-full"
                 >
-                  <Play className="h-4 w-4 fill-current" />
-                  Generate Synthetic Data
-                </Button>
+                  <Button
+                    id="generate-responses-btn"
+                    onClick={handleGenerate}
+                    disabled={!isValidJson || isLoading}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-medium shadow-lg shadow-indigo-100 hover:shadow-xl transition-all duration-300 py-6 text-sm flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Play className="h-4 w-4 fill-current" />
+                    Generate Synthetic Data
+                  </Button>
+                </motion.div>
               </CardContent>
             </Card>
 
@@ -174,8 +217,8 @@ export default function SurveyEditorPage() {
                 <p><span className="font-semibold text-zinc-800">Sample size:</span> 200 synthetic responses</p>
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </main>
 
       {/* Loading Overlay */}

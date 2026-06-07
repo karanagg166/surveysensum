@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Star, Truck, Award, Smile } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,46 @@ import { SurveyStats } from "@/lib/api";
 
 interface StatsPanelProps {
   stats: SurveyStats;
+}
+
+function AnimatedNumber({ value, precision = 0 }: { value: number; precision?: number }) {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const start = 0;
+    const end = value;
+    if (start === end) {
+      setCurrent(end);
+      return;
+    }
+
+    const duration = 1200; // 1.2s for smooth counting
+    const startTime = performance.now();
+
+    let animationFrameId: number;
+
+    const updateNumber = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Ease out cubic
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const nextVal = start + (end - start) * ease;
+      setCurrent(nextVal);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(updateNumber);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(updateNumber);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [value]);
+
+  return <span>{current.toFixed(precision)}</span>;
 }
 
 export default function StatsPanel({ stats }: StatsPanelProps) {
@@ -41,14 +82,14 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
+        staggerChildren: 0.08,
       },
     },
   };
 
   const item = {
     hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { type: "spring" as const, stiffness: 300, damping: 24 } },
+    show: { y: 0, opacity: 1, transition: { type: "spring" as const, stiffness: 100, damping: 15 } },
   };
 
   return (
@@ -60,8 +101,8 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
       id="stats-panel"
     >
       {/* Average Satisfaction */}
-      <motion.div variants={item}>
-        <Card className="overflow-hidden border-zinc-200/80 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <motion.div variants={item} whileHover={{ y: -4 }} className="h-full">
+        <Card className="overflow-hidden border-zinc-200/80 bg-white shadow-sm hover:shadow-md transition-shadow h-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-zinc-500">Avg Satisfaction (CSAT)</CardTitle>
             <Smile className="h-4 w-4 text-zinc-400" />
@@ -69,7 +110,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
           <CardContent>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold tracking-tight text-zinc-900">
-                {stats.avg_satisfaction.toFixed(2)}
+                <AnimatedNumber value={stats.avg_satisfaction} precision={2} />
               </span>
               <span className="text-sm text-zinc-500">/ 5.00</span>
             </div>
@@ -93,8 +134,8 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
       </motion.div>
 
       {/* Net Promoter Score (NPS) */}
-      <motion.div variants={item}>
-        <Card className="overflow-hidden border-zinc-200/80 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <motion.div variants={item} whileHover={{ y: -4 }} className="h-full">
+        <Card className="overflow-hidden border-zinc-200/80 bg-white shadow-sm hover:shadow-md transition-shadow h-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-zinc-500">Net Promoter Score (NPS)</CardTitle>
             <Award className="h-4 w-4 text-zinc-400" />
@@ -102,7 +143,8 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
           <CardContent>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold tracking-tight text-zinc-900">
-                {stats.nps_score > 0 ? `+${stats.nps_score}` : stats.nps_score}
+                {stats.nps_score > 0 && "+"}
+                <AnimatedNumber value={stats.nps_score} precision={0} />
               </span>
             </div>
             <div className="mt-2 flex items-center gap-2">
@@ -122,8 +164,8 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
       </motion.div>
 
       {/* Delivery Success Rate */}
-      <motion.div variants={item}>
-        <Card className="overflow-hidden border-zinc-200/80 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <motion.div variants={item} whileHover={{ y: -4 }} className="h-full">
+        <Card className="overflow-hidden border-zinc-200/80 bg-white shadow-sm hover:shadow-md transition-shadow h-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-zinc-500">On-Time Delivery Rate</CardTitle>
             <Truck className="h-4 w-4 text-zinc-400" />
@@ -131,14 +173,14 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
           <CardContent>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold tracking-tight text-zinc-900">
-                {stats.delivery_on_time_percentage.toFixed(1)}%
+                <AnimatedNumber value={stats.delivery_on_time_percentage} precision={1} />%
               </span>
             </div>
             <div className="mt-2 w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${stats.delivery_on_time_percentage}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
                 className="bg-indigo-600 h-1.5 rounded-full"
               />
             </div>
@@ -151,8 +193,8 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
       </motion.div>
 
       {/* Top Purchasing Category */}
-      <motion.div variants={item}>
-        <Card className="overflow-hidden border-zinc-200/80 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <motion.div variants={item} whileHover={{ y: -4 }} className="h-full">
+        <Card className="overflow-hidden border-zinc-200/80 bg-white shadow-sm hover:shadow-md transition-shadow h-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-zinc-500">Top Product Category</CardTitle>
             <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Demographic</span>
@@ -164,7 +206,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
               </span>
             </div>
             <p className="mt-2 text-xs text-zinc-500">
-              Responsible for <span className="font-semibold text-zinc-700">{topCategoryPct}%</span> of overall purchase volume.
+              Responsible for <span className="font-semibold text-zinc-700"><AnimatedNumber value={topCategoryPct} precision={0} />%</span> of overall purchase volume.
             </p>
           </CardContent>
         </Card>

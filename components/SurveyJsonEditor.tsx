@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -117,61 +118,77 @@ export default function SurveyJsonEditor({ onValidationChange }: SurveyJsonEdito
   const isValid = errorMsg === null;
 
   return (
-    <Card className="border-zinc-200/80 bg-white shadow-sm flex flex-col h-full">
-      <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
-        <div>
-          <CardTitle className="text-base font-semibold text-zinc-900">Survey Definition (JSON)</CardTitle>
-          <CardDescription>Edit the survey questions or fields below</CardDescription>
-        </div>
-        <Button
-          id="editor-reset-btn"
-          variant="outline"
-          size="sm"
-          onClick={handleReset}
-          className="h-8 px-2.5 border-zinc-200 text-zinc-600 hover:bg-zinc-50 flex items-center gap-1.5"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Reset
-        </Button>
-      </CardHeader>
-      
-      <CardContent className="flex-1 flex flex-col gap-3 pb-4">
-        <div className="relative flex-1 min-h-[300px]">
-          <Textarea
-            id="editor-textarea"
-            value={jsonText}
-            onChange={(e) => handleChange(e.target.value)}
-            className={`w-full h-full font-mono text-xs p-4 leading-relaxed bg-zinc-50 border transition-all duration-300 resize-none ${
-              isValid 
-                ? "border-zinc-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" 
-                : "border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
-            }`}
-            style={{ minHeight: "350px", fontFamily: "var(--font-geist-mono), monospace" }}
-          />
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 80, damping: 15 }}
+      className="h-full"
+    >
+      <Card className="border-zinc-200/80 bg-white shadow-sm flex flex-col h-full">
+        <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base font-semibold text-zinc-900">Survey Definition (JSON)</CardTitle>
+            <CardDescription>Edit the survey questions or fields below</CardDescription>
+          </div>
+          <Button
+            id="editor-reset-btn"
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            className="h-8 px-2.5 border-zinc-200 text-zinc-600 hover:bg-zinc-50 flex items-center gap-1.5"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset
+          </Button>
+        </CardHeader>
+        
+        <CardContent className="flex-1 flex flex-col gap-3 pb-4">
+          <div className="relative flex-1 min-h-[300px]">
+            <Textarea
+              id="editor-textarea"
+              value={jsonText}
+              onChange={(e) => handleChange(e.target.value)}
+              className={`w-full h-full font-mono text-xs p-4 leading-relaxed bg-zinc-50 border transition-all duration-300 resize-none ${
+                isValid 
+                  ? "border-zinc-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" 
+                  : "border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+              }`}
+              style={{ minHeight: "350px", fontFamily: "var(--font-geist-mono), monospace" }}
+            />
+          </div>
 
-        {/* Validation Status Footer */}
-        <div
-          id="editor-status-text"
-          className={`flex items-center gap-2 rounded-xl p-3 text-xs border ${
-            isValid
-              ? "bg-emerald-50/50 text-emerald-800 border-emerald-100"
-              : "bg-rose-50/50 text-rose-800 border-rose-100"
-          }`}
-        >
-          {isValid ? (
-            <>
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-              <span>Survey schema is valid and ready to generate.</span>
-            </>
-          ) : (
-            <>
-              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-              <span className="font-semibold">{errorMsg}</span>
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          {/* Validation Status Footer */}
+          <div className="min-h-[46px] relative overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={isValid ? "valid" : `invalid-${errorMsg}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                id="editor-status-text"
+                className={`flex items-center gap-2 rounded-xl p-3 text-xs border w-full ${
+                  isValid
+                    ? "bg-emerald-50/50 text-emerald-800 border-emerald-100"
+                    : "bg-rose-50/50 text-rose-800 border-rose-100"
+                }`}
+              >
+                {isValid ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Survey schema is valid and ready to generate.</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                    <span className="font-semibold">{errorMsg}</span>
+                  </>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }

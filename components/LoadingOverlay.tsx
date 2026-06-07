@@ -27,6 +27,21 @@ export default function LoadingOverlay({ isVisible, currentStep }: LoadingOverla
     return () => clearInterval(interval);
   }, [isVisible]);
 
+  const listContainer = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.12,
+      },
+    },
+  };
+
+  const listItem = {
+    hidden: { opacity: 0, x: -20 },
+    show: { opacity: 1, x: 0, transition: { type: "spring" as const, stiffness: 100, damping: 15 } },
+  };
+
   return (
     <AnimatePresence>
       {isVisible && (
@@ -40,8 +55,9 @@ export default function LoadingOverlay({ isVisible, currentStep }: LoadingOverla
           <div className="w-full max-w-md p-8 text-center">
             {/* Spinning Indicator */}
             <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 120, damping: 15 }}
               className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-600"
             >
               <Loader2 className="h-8 w-8 animate-spin" />
@@ -52,24 +68,34 @@ export default function LoadingOverlay({ isVisible, currentStep }: LoadingOverla
             </h3>
 
             {/* Steps List */}
-            <div className="space-y-4 text-left">
+            <motion.div
+              variants={listContainer}
+              initial="hidden"
+              animate="show"
+              className="space-y-4 text-left"
+            >
               {STEPS.map((step) => {
                 const isCompleted = currentStep > step.id;
                 const isActive = currentStep === step.id;
-                const isPending = currentStep < step.id;
 
                 return (
-                  <div
+                  <motion.div
                     key={step.id}
+                    variants={listItem}
+                    layout
                     className={`flex items-center gap-3 rounded-lg border p-3.5 transition-colors duration-300 ${
                       isActive
-                        ? "border-indigo-200 bg-indigo-50/50 text-indigo-950 font-medium"
+                        ? "border-indigo-200 bg-indigo-50/50 text-indigo-950 font-medium shadow-sm"
                         : isCompleted
                         ? "border-emerald-100 bg-emerald-50/20 text-zinc-500"
                         : "border-zinc-100 bg-zinc-50/50 text-zinc-400"
                     }`}
                   >
-                    <div
+                    <motion.div
+                      layout
+                      initial={false}
+                      animate={isCompleted ? { scale: [1, 1.2, 1] } : {}}
+                      transition={{ duration: 0.3 }}
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
                         isCompleted
                           ? "border-emerald-500 bg-emerald-500 text-white"
@@ -88,13 +114,13 @@ export default function LoadingOverlay({ isVisible, currentStep }: LoadingOverla
                       ) : (
                         <span className="text-xs">{step.id + 1}</span>
                       )}
-                    </div>
+                    </motion.div>
 
                     <span className="text-sm">{step.label}</span>
-                  </div>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           </div>
         </motion.div>
       )}

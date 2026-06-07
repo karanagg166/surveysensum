@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/dialog";
 import { SurveyResponse, SurveyDefinition } from "@/lib/api";
 
+const MotionTableRow = motion(TableRow);
+
 interface ResponseTableProps {
   responses: SurveyResponse[];
   survey: SurveyDefinition;
@@ -313,8 +315,11 @@ export default function ResponseTable({ responses, survey }: ResponseTableProps)
                 const textVal = getTextVal(r);
 
                 return (
-                  <TableRow
-                    key={r.response_id}
+                  <MotionTableRow
+                    key={`${currentPage}-${r.response_id}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: (i % itemsPerPage) * 0.02 }}
                     className="hover:bg-zinc-50/50 transition-colors group cursor-pointer"
                     onClick={() => setSelectedResponse(r)}
                   >
@@ -368,7 +373,7 @@ export default function ResponseTable({ responses, survey }: ResponseTableProps)
                         <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>
-                  </TableRow>
+                  </MotionTableRow>
                 );
               })
             ) : (

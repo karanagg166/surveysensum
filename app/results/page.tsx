@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Download, FileSpreadsheet, FileJson, BarChart3, Database } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 import StatsPanel from "@/components/StatsPanel";
 import CategoryChart from "@/components/CategoryChart";
@@ -15,6 +15,7 @@ import { SurveyDefinition, SurveyResponse, SurveyStats } from "@/lib/api";
 
 export default function ResultsDashboardPage() {
   const router = useRouter();
+  const { toast } = useToast();
 
   const [survey, setSurvey] = useState<SurveyDefinition | null>(null);
   const [responses, setResponses] = useState<SurveyResponse[]>([]);
@@ -29,7 +30,11 @@ export default function ResultsDashboardPage() {
       const storedStats = localStorage.getItem("survey_stats");
 
       if (!storedSurvey || !storedResponses || !storedStats) {
-        toast.error("No active session found. Redirecting to survey creator.");
+        toast({
+          title: "Session Expired",
+          description: "No active session found. Redirecting to survey creator.",
+          variant: "destructive",
+        });
         router.push("/");
         return;
       }
@@ -39,7 +44,11 @@ export default function ResultsDashboardPage() {
       setStats(JSON.parse(storedStats));
     } catch (e) {
       console.error("Failed to parse stored survey session", e);
-      toast.error("Error loading session data.");
+      toast({
+        title: "Error",
+        description: "Error loading session data.",
+        variant: "destructive",
+      });
       router.push("/");
     } finally {
       setLoading(false);
@@ -51,7 +60,10 @@ export default function ResultsDashboardPage() {
     if (!survey || responses.length === 0) return;
 
     try {
-      toast.info("Preparing CSV export...");
+      toast({
+        title: "Exporting",
+        description: "Preparing CSV export...",
+      });
 
       const headers = ["response_id", ...survey.questions.map((q) => q.id)];
       
@@ -89,9 +101,16 @@ export default function ResultsDashboardPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      toast.success("CSV download started!");
+      toast({
+        title: "Success",
+        description: "CSV download started!",
+      });
     } catch (e) {
-      toast.error("Failed to export CSV file.");
+      toast({
+        title: "Error",
+        description: "Failed to export CSV file.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -100,7 +119,10 @@ export default function ResultsDashboardPage() {
     if (!survey || responses.length === 0) return;
 
     try {
-      toast.info("Preparing JSON export...");
+      toast({
+        title: "Exporting",
+        description: "Preparing JSON export...",
+      });
 
       const exportData = {
         survey,
@@ -122,9 +144,16 @@ export default function ResultsDashboardPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success("JSON download started!");
+      toast({
+        title: "Success",
+        description: "JSON download started!",
+      });
     } catch (e) {
-      toast.error("Failed to export JSON file.");
+      toast({
+        title: "Error",
+        description: "Failed to export JSON file.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -141,9 +170,28 @@ export default function ResultsDashboardPage() {
 
   return (
     <div className="flex-1 bg-zinc-50 flex flex-col justify-between" id="results-dashboard-page">
-      <main className="flex-grow container mx-auto px-4 py-8 max-w-6xl space-y-6">
+      <motion.main
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1,
+            },
+          },
+        }}
+        initial="hidden"
+        animate="show"
+        className="flex-grow container mx-auto px-4 py-8 max-w-6xl space-y-6"
+      >
         {/* Navigation / Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 15 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
+          }}
+          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+        >
           <div className="flex items-center gap-3">
             <Button
               id="back-to-editor-btn"
@@ -159,10 +207,15 @@ export default function ResultsDashboardPage() {
                 {survey.title}
               </h1>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-150 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+                <motion.span
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, type: "spring", stiffness: 200, damping: 10 }}
+                  className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-150 px-2.5 py-0.5 text-xs font-semibold text-indigo-700"
+                >
                   <Database className="h-3 w-3 mr-1" />
                   {responses.length} Synthetic Responses
-                </span>
+                </motion.span>
                 <span className="text-xs text-zinc-400">Generated locally via Cohere AI</span>
               </div>
             </div>
@@ -191,30 +244,51 @@ export default function ResultsDashboardPage() {
               Export JSON
             </Button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Stats Summary cards */}
-        <StatsPanel stats={stats} />
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 15 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
+          }}
+        >
+          <StatsPanel stats={stats} />
+        </motion.div>
 
         {/* Recharts Analytics Charts */}
-        <CategoryChart stats={stats} />
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 15 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
+          }}
+        >
+          <CategoryChart stats={stats} />
+        </motion.div>
 
         {/* Tabular Responses Details */}
-        <Card className="border-zinc-200/80 bg-white shadow-sm">
-          <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold text-zinc-900 flex items-center gap-2">
-                <BarChart3 className="h-4.5 w-4.5 text-indigo-600" />
-                Raw Simulation Dataset
-              </h3>
-              <p className="text-xs text-zinc-500 mt-0.5">View and filter individual synthetic profiles</p>
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 15 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
+          }}
+        >
+          <Card className="border-zinc-200/80 bg-white shadow-sm">
+            <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-zinc-900 flex items-center gap-2">
+                  <BarChart3 className="h-4.5 w-4.5 text-indigo-600" />
+                  Raw Simulation Dataset
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">View and filter individual synthetic profiles</p>
+              </div>
             </div>
-          </div>
-          <CardContent className="p-6">
-            <ResponseTable responses={responses} survey={survey} />
-          </CardContent>
-        </Card>
-      </main>
+            <CardContent className="p-6">
+              <ResponseTable responses={responses} survey={survey} />
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.main>
 
       {/* Footer */}
       <footer className="py-6 border-t border-zinc-200 bg-white mt-12 text-center text-xs text-zinc-400">
