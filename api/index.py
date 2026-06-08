@@ -212,6 +212,33 @@ def calculate_survey_stats(responses, survey) -> Dict[str, Any]:
 
     sentiment_alignment = round((aligned_count / checked_count) * 100, 1) if checked_count > 0 else 100.0
 
+    # Calculate Delivery Conditional Probability (Complaint Accuracy)
+    shipping_keywords = {"shipping", "late", "delivery", "delayed", "arrived"}
+    delivery_mention_count = 0
+    delivery_mention_late = 0
+    if ot_q_id and delivery_q_id:
+        for r in responses:
+            comment = str(r.answers.get(ot_q_id) or "").lower()
+            if any(k in comment for k in shipping_keywords):
+                delivery_mention_count += 1
+                val = str(r.answers.get(delivery_q_id, "")).lower()
+                if val in ["no", "late", "delayed", "false"]:
+                    delivery_mention_late += 1
+
+    delivery_complaint_accuracy = round(
+        (delivery_mention_late / delivery_mention_count) * 100, 1
+    ) if delivery_mention_count > 0 else 100.0
+
+    # Calculate Chi-Squared Fit (degrees of freedom = 3, critical value alpha=0.05 is 7.815)
+    category_weights = {"Electronics": 0.30, "Clothing": 0.35, "Home": 0.25, "Other": 0.10}
+    chi_square_stat = 0.0
+    for cat, weight in category_weights.items():
+        expected = total * weight
+        observed = category_counts.get(cat, 0)
+        if expected > 0:
+            chi_square_stat += ((observed - expected) ** 2) / expected
+    chi_sq_pass = bool(chi_square_stat < 7.815)
+
     return {
         "avg_satisfaction": avg_sat,
         "avg_nps": avg_nps,
@@ -226,5 +253,7 @@ def calculate_survey_stats(responses, survey) -> Dict[str, Any]:
         "pearson_r": pearson_r,
         "total_responses": total,
         "token_usage": token_usage,
-        "sentiment_alignment": sentiment_alignment
+        "sentiment_alignment": sentiment_alignment,
+        "delivery_complaint_accuracy": delivery_complaint_accuracy,
+        "chi_sq_pass": chi_sq_pass
     }

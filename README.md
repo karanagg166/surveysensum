@@ -16,6 +16,7 @@ To build a generator that is **plausible**, **coherent**, and **cost-effective**
    * Instead of passing every response generation to a slow and expensive LLM, we generate the structured answers (ratings, NPS, single-choice fields) using a statistical engine.
    * When a request for $N$ responses is made, we partition the population into 4 distinct customer archetypes: **Promoter**, **Passive**, **Detractor**, and **Mixed**.
    * Each archetype has its own probability distribution. For example, a *Detractor* is highly likely to rate satisfaction as 1 or 2, NPS as 0–6, and has a higher probability of experiencing late delivery.
+   * The split (40% Promoter, 30% Passive, 20% Detractor, 10% Mixed) is modeled directly on industry e-commerce NPS benchmarks, which typically show 30–45% promoters for healthy retail operations.
    * This persona model guarantees **perfect numerical coherence** (e.g. strong satisfaction-NPS correlation with Pearson $r > 0.70$) without any API costs or latency.
 
 2. **Context-Aware Batch LLM (Open-text Feedback)**:

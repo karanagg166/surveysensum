@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Star, Truck, Award, Smile, Activity, TrendingUp, CheckCircle2, Zap } from "lucide-react";
+import { Star, Truck, Award, Smile, Activity, TrendingUp, CheckCircle2, Zap, AlertTriangle, Scale } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SurveyStats } from "@/lib/api";
 
@@ -238,7 +238,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
               Verification Active
             </span>
           </CardHeader>
-          <CardContent className="grid gap-6 md:grid-cols-3 p-6">
+          <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 p-6">
             {/* Pearson Correlation Metric */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
@@ -246,7 +246,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
                 Statistical Coherence
               </div>
               <div className="flex items-baseline gap-2 pt-1">
-                <span className="text-2xl font-bold text-zinc-900">
+                <span className="text-xl font-bold text-zinc-900">
                   {stats.pearson_r !== null ? (
                     <>r = <AnimatedNumber value={stats.pearson_r} precision={3} /></>
                   ) : (
@@ -269,7 +269,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
                 Semantic Sentiment Alignment
               </div>
               <div className="flex items-baseline gap-2 pt-1">
-                <span className="text-2xl font-bold text-zinc-900">
+                <span className="text-xl font-bold text-zinc-900">
                   <AnimatedNumber value={stats.sentiment_alignment} precision={1} />%
                 </span>
                 <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -289,30 +289,49 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
               </p>
             </div>
 
-            {/* Token Usage Metric */}
+            {/* Delivery Complaint Accuracy Metric */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                <Zap className="h-4 w-4 text-indigo-500" />
-                LLM Pipeline Resource Cost
+                <AlertTriangle className="h-4 w-4 text-indigo-500" />
+                Delivery Conditional Fit
               </div>
               <div className="flex items-baseline gap-2 pt-1">
-                <span className="text-2xl font-bold text-zinc-900">
-                  {stats.token_usage > 0 ? (
-                    <><AnimatedNumber value={stats.token_usage} precision={0} /> tns</>
-                  ) : (
-                    "0 tokens"
-                  )}
+                <span className="text-xl font-bold text-zinc-900">
+                  <AnimatedNumber value={stats.delivery_complaint_accuracy} precision={1} />%
                 </span>
                 <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${
-                  stats.token_usage > 0 
-                    ? "bg-purple-50 text-purple-700 border-purple-200" 
-                    : "bg-zinc-100 text-zinc-700 border-zinc-200"
+                  stats.delivery_complaint_accuracy >= 90
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200"
                 }`}>
-                  {stats.token_usage > 0 ? "Command-R Active" : "Local Fallback Engine"}
+                  {stats.delivery_complaint_accuracy >= 90 ? "Highly Accurate" : "Aligned"}
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 pt-1 leading-relaxed">
-                Resource usage for open-text generation. Estimated budget impact: <span className="font-semibold text-zinc-700">${(stats.token_usage * 0.0000015).toFixed(4)}</span>.
+                Accuracy of shipping complaints matching recorded late deliveries.
+              </p>
+            </div>
+
+            {/* Chi-Squared Distribution Fit Metric */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                <Scale className="h-4 w-4 text-indigo-500" />
+                Goodness-of-Fit (Chi-Sq)
+              </div>
+              <div className="flex items-baseline gap-2 pt-1">
+                <span className="text-xl font-bold text-zinc-900">
+                  {stats.chi_sq_pass ? "Pass" : "Fail"}
+                </span>
+                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                  stats.chi_sq_pass
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-rose-50 text-rose-700 border-rose-200"
+                }`}>
+                  {stats.chi_sq_pass ? "p > 0.05" : "p <= 0.05"}
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-500 pt-1 leading-relaxed">
+                Chi-squared goodness-of-fit test validating category split target.
               </p>
             </div>
           </CardContent>

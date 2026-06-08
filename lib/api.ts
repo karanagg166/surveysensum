@@ -35,6 +35,8 @@ export interface SurveyStats {
   total_responses: number;
   token_usage: number;
   sentiment_alignment: number;
+  delivery_complaint_accuracy: number;
+  chi_sq_pass: boolean;
 }
 
 export interface GenerateResult {
