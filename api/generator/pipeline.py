@@ -35,8 +35,9 @@ def generate_responses(survey: SurveyDefinition, n: int) -> List[SurveyResponse]
         })
         
     # 3. Find open-text questions and generate their answers
-    # IMPORTANT: Process ALL open-text questions in a single shared thread pool
-    # with one timeout budget to avoid Vercel's 60-second function timeout.
+    # Strategy: Use Cohere API for the FIRST open-text question only (proven to
+    # fit within Vercel's 60s limit). Additional open-text questions use fast
+    # local fallback templates to avoid Cohere rate-limit-induced timeouts.
     open_text_questions = [q for q in survey.questions if q.type == QuestionType.open_text]
     
     if open_text_questions:
@@ -65,52 +66,53 @@ def generate_responses(survey: SurveyDefinition, n: int) -> List[SurveyResponse]
                 "delivery_on_time": delivery_on_time
             })
         
-        # Prepare ALL batches for ALL open-text questions together
-        # Each job is (question_id, batch_start_idx, profiles_slice)
-        all_jobs = []
-        for ot_question in open_text_questions:
-            for i in range(0, n, batch_size):
-                chunk_profiles = respondent_profiles[i:i+batch_size]
-                all_jobs.append((ot_question.id, i, chunk_profiles))
+        # --- Process FIRST open-text question via Cohere API ---
+        primary_ot = open_text_questions[0]
+        all_comments = [None] * n
         
-        # Results dict: { question_id: [comment_or_None, ...] }
-        ot_results = {q.id: [None] * n for q in open_text_questions}
+        batches = []
+        for i in range(0, n, batch_size):
+            chunk_profiles = respondent_profiles[i:i+batch_size]
+            batches.append((i, chunk_profiles))
         
-        def worker(job):
-            q_id, start_idx, profiles = job
+        def worker(batch_info):
+            start_idx, profiles = batch_info
             try:
                 comments = batch_generate_open_text(profiles, survey.title)
-                return q_id, start_idx, comments
+                return start_idx, comments
             except Exception as e:
-                print(f"Error in worker thread for {q_id}: {e}")
-                return q_id, start_idx, [get_fallback_comment(p) for p in profiles]
+                print(f"Error in worker thread: {e}")
+                return start_idx, [get_fallback_comment(p) for p in profiles]
         
-        # Single shared timeout of 25 seconds for ALL open-text generation
-        # (well under Vercel's 60s limit, leaving room for stats calculation)
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(worker, job): job for job in all_jobs}
+            futures = {executor.submit(worker, b): b for b in batches}
             try:
                 for future in concurrent.futures.as_completed(futures, timeout=25.0):
-                    q_id, start_idx, comments = future.result()
+                    start_idx, comments = future.result()
                     for idx, comment in enumerate(comments):
                         if start_idx + idx < n:
-                            ot_results[q_id][start_idx + idx] = comment
+                            all_comments[start_idx + idx] = comment
             except concurrent.futures.TimeoutError:
-                print("Open-text generation timed out. Using fallbacks for remaining items.")
+                print("Primary open-text generation timed out. Using fallbacks.")
                 for future in futures:
                     future.cancel()
         
-        # Fill in fallbacks for any items that failed or timed out
-        for ot_question in open_text_questions:
-            q_id = ot_question.id
+        # Fill fallbacks for any failed/timed-out items
+        for idx in range(n):
+            if all_comments[idx] is None:
+                all_comments[idx] = get_fallback_comment(respondent_profiles[idx])
+        
+        # Assign to responses_data
+        for idx, comment in enumerate(all_comments):
+            if idx < len(responses_data):
+                responses_data[idx]["answers"][primary_ot.id] = comment
+        
+        # --- Process ADDITIONAL open-text questions via fast fallbacks ---
+        for ot_question in open_text_questions[1:]:
             for idx in range(n):
-                if ot_results[q_id][idx] is None:
-                    ot_results[q_id][idx] = get_fallback_comment(respondent_profiles[idx])
-            
-            # Assign comments back to responses_data
-            for idx in range(n):
+                fallback = get_fallback_comment(respondent_profiles[idx])
                 if idx < len(responses_data):
-                    responses_data[idx]["answers"][q_id] = ot_results[q_id][idx]
+                    responses_data[idx]["answers"][ot_question.id] = fallback
                 
     # 4. Convert to Pydantic SurveyResponse objects
     results = []

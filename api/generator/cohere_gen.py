@@ -83,7 +83,7 @@ def batch_generate_open_text(profiles: List[Dict[str, Any]], survey_title: str) 
         return [get_fallback_comment(p) for p in profiles]
         
     try:
-        client = cohere.ClientV2(api_key=api_key)
+        client = cohere.ClientV2(api_key=api_key, timeout=12.0)
         
         # Prepare the profile info to pass to Cohere
         compact_profiles = []
